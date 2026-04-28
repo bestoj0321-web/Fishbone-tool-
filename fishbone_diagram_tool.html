@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>설비 고장원인 Fishbone Diagram 분석기</title>
+  <style>
+    :root {
+      --bg: #f2f5f9;
+      --panel: #ffffff;
+      --line: #15344a;
+      --muted: #5c6c7a;
+      --accent: #00796b;
+      --danger: #b00020;
+      --border: #d7dee6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+      background: radial-gradient(circle at top right, #e5eff8 0%, var(--bg) 45%, #eef2f6 100%);
+      color: #1a2733;
+    }
+
+    .page {
+      max-width: 1900px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1fr;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 8px 22px rgba(21, 52, 74, 0.08);
+    }
+
+    .controls {
+      padding: 16px;
+      overflow: visible;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 1.2rem;
+      color: #0d2a3d;
+    }
+
+    .helper {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.35;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(130px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+      align-items: end;
+    }
+
+    .meta-grid .field.wide {
+      grid-column: span 2;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    input,
+    textarea,
+    button,
+    select {
+      font: inherit;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      padding: 9px 10px;
+      border-radius: 8px;
+      border: 1px solid #c7d1db;
+      background: #fff;
+      color: #1a2733;
+    }
+
+    textarea {
+      min-height: 72px;
+      resize: vertical;
+      line-height: 1.35;
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin: 8px 0 12px;
+    }
+
+    .btn-row.tight {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 9px 10px;
+      cursor: pointer;
+      background: #dbe5ef;
+      color: #102131;
+      font-weight: 700;
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    button.danger {
+      background: #fbe6eb;
+      color: #7f0017;
+    }
+
+    button.ghost {
+      background: #edf2f7;
+      color: #28435a;
+    }
+
+    .category-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      background: #fbfdff;
+    }
+
+    #categoryContainer {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 10px;
+    }
+
+    .category-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px;
+      margin-bottom: 8px;
+      align-items: center;
+    }
+
+    .causes {
+      display: grid;
+      gap: 6px;
+    }
+
+    .cause-row {
+      border: 1px solid #dce3ea;
+      border-radius: 8px;
+      padding: 8px;
+      background: #fff;
+      display: grid;
+      gap: 6px;
+    }
+
+    .cause-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 6px;
+    }
+
+    .cause-grid .field label {
+      font-size: 0.75rem;
+    }
+
+    .subcause-block {
+      border: 1px dashed #cdd8e2;
+      border-radius: 8px;
+      padding: 8px;
+      background: #f9fcff;
+      display: grid;
+      gap: 6px;
+    }
+
+    .subcause-title {
+      font-size: 0.78rem;
+      color: #3e5669;
+      font-weight: 700;
+    }
+
+    .subcause-list {
+      display: grid;
+      gap: 5px;
+    }
+
+    .subcause-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .subcause-btn {
+      padding: 6px 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      border-radius: 7px;
+    }
+
+    .subcause-empty {
+      font-size: 0.8rem;
+      color: #7a8a98;
+    }
+
+    .cause-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .critical-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #7b1022;
+      user-select: none;
+    }
+
+    .critical-toggle input {
+      width: 16px;
+      height: 16px;
+      accent-color: #b00020;
+    }
+
+    .diagram-wrap {
+      padding: 14px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 10px;
+      min-height: 760px;
+    }
+
+    .diagram-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: #f8fcff;
+      font-size: 0.92rem;
+    }
+
+    .svg-shell {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      overflow: hidden;
+      padding: 10px;
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      min-height: 420px;
+      display: block;
+    }
+
+    .meta-text {
+      font-size: 15px;
+      fill: #27465f;
+    }
+
+    .spine,
+    .bone,
+    .minor-bone,
+    .connector {
+      stroke: var(--line);
+      fill: none;
+      stroke-linecap: round;
+    }
+
+    .spine {
+      stroke-width: 5;
+    }
+
+    .bone {
+      stroke-width: 3;
+    }
+
+    .minor-bone {
+      stroke-width: 2;
+    }
+
+    .connector {
+      stroke-width: 1.4;
+      stroke-dasharray: 4 4;
+    }
+
+    .category-label {
+      font-size: 21px;
+      font-weight: 800;
+      fill: #0f2c3f;
+    }
+
+    .cause-label {
+      font-size: 16px;
+      font-weight: 700;
+      fill: #234154;
+      stroke: #ffffff;
+      stroke-width: 6px;
+      paint-order: stroke fill;
+      stroke-linejoin: round;
+    }
+
+    .cause-label-critical {
+      fill: #b00020;
+    }
+
+    .subcause-label {
+      font-size: 12px;
+      font-weight: 600;
+      fill: #315167;
+      stroke: #ffffff;
+      stroke-width: 4px;
+      paint-order: stroke fill;
+      stroke-linejoin: round;
+    }
+
+    .effect-box {
+      fill: #fff5f6;
+      stroke: #a32335;
+      stroke-width: 2;
+      rx: 8;
+    }
+
+    .effect-text {
+      fill: #7b1022;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .effect-value {
+      fill: #7b1022;
+      font-weight: 700;
+    }
+
+    .action-box {
+      fill: #f7fbff;
+      stroke: #2a4a62;
+      stroke-width: 1.8;
+      rx: 10;
+    }
+
+    .action-title {
+      fill: #173a52;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .action-text {
+      fill: #21455d;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    @media (max-width: 1200px) {
+      .meta-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .meta-grid .field.wide {
+        grid-column: 1 / -1;
+      }
+
+      #categoryContainer {
+        grid-template-columns: 1fr;
+      }
+
+      .btn-row.tight {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .cause-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .diagram-wrap {
+        min-height: auto;
+      }
+    }
+
+    @media print {
+      @page {
+        size: A4 landscape;
+        margin: 6mm;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: auto;
+        background: #fff;
+      }
+
+      body {
+        background: #fff;
+      }
+
+      .page {
+        display: block;
+        padding: 0;
+        margin: 0;
+        max-width: none;
+      }
+
+      .controls {
+        display: none;
+      }
+
+      .diagram-wrap {
+        min-height: 0;
+        gap: 4px;
+        page-break-inside: avoid;
+        break-inside: avoid-page;
+      }
+
+      .diagram-title {
+        padding: 0 4px;
+        border: none;
+        background: transparent;
+        font-size: 10pt;
+      }
+
+      .svg-shell {
+        padding: 0;
+        border: none;
+        overflow: visible;
+      }
+
+      svg {
+        min-height: 0;
+        width: 100%;
+        max-height: 184mm;
+      }
+
+      .diagram-wrap,
+      .svg-shell,
+      .panel {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="panel controls">
+      <h1>설비 고장원인 Fishbone 분석기</h1>
+      <p class="helper">설비 고장 현상에 대해 6M(Man, Machine, Method, Material, Measurement, Environment) 관점으로 원인을 입력하면 다이어그램이 자동 생성됩니다.</p>
+
+      <div class="meta-grid">
+        <div class="field">
+          <label for="equipment">설비명</label>
+          <input id="equipment" data-meta="equipment" placeholder="예: 냉각 펌프 #2" />
+        </div>
+        <div class="field">
+          <label for="failureDate">발생일</label>
+          <input id="failureDate" data-meta="failureDate" type="date" />
+        </div>
+        <div class="field wide">
+          <label for="effect">고장 현상(Effect)</label>
+          <input id="effect" data-meta="effect" placeholder="예: 베어링 과열로 인한 설비 정지" />
+        </div>
+        <div class="field">
+          <label for="author">작성자</label>
+          <input id="author" data-meta="author" placeholder="예: 신뢰성팀 홍길동" />
+        </div>
+        <div class="field">
+          <label for="line">라인/설비 위치</label>
+          <input id="line" data-meta="line" placeholder="예: 유틸리티동 3F" />
+        </div>
+      </div>
+
+      <div class="btn-row tight">
+        <button class="primary" id="addCategoryBtn">카테고리 추가</button>
+        <button id="saveJsonBtn">JSON 저장</button>
+        <button id="loadJsonBtn">JSON 불러오기</button>
+        <button id="exportPngBtn">PNG 내보내기</button>
+      </div>
+      <input type="file" id="loadJsonInput" accept="application/json" hidden />
+      <div class="btn-row">
+        <button class="ghost" id="printBtn">인쇄</button>
+        <button class="danger" id="resetBtn">초기화</button>
+      </div>
+
+      <div id="categoryContainer"></div>
+
+      <div class="field" style="margin-top: 10px;">
+        <label for="actionPlan">개선/재발방지 대책</label>
+        <textarea id="actionPlan" data-meta="actionPlan" placeholder="예: 윤활 주기 단축, 정렬 기준 재정의, 예지보전 센서 추가"></textarea>
+      </div>
+    </section>
+
+    <section class="panel diagram-wrap">
+      <div class="diagram-title">
+        <div><strong id="diagramMainTitle">고장원인 분석 다이어그램</strong></div>
+        <div>화살표 끝단이 최종 고장 현상(Effect)입니다.</div>
+      </div>
+      <div class="svg-shell">
+        <svg id="fishboneSvg" viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Fishbone diagram"></svg>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (() => {
+      const defaultCategories = [
+        "Man (인적요인)",
+        "Machine (설비요인)",
+        "Method (작업방법)",
+        "Material (자재요인)",
+        "Measurement (측정/관리)",
+        "Environment (환경요인)"
+      ];
+
+      let uidCounter = 1;
+      const uid = () => `id_${uidCounter++}`;
+
+      const createSubCause = (text = "") => ({
+        id: uid(),
+        text
+      });
+
+      const createCause = (text = "") => ({
+        id: uid(),
+        text,
+        evidence: "",
+        critical: false,
+        subCauses: []
+      });
+
+      const createCategory = (name = "새 카테고리") => ({
+        id: uid(),
+        name,
+        causes: [createCause("")]
+      });
+
+      const createDefaultState = () => ({
+        meta: {
+          equipment: "",
+          failureDate: new Date().toISOString().slice(0, 10),
+          effect: "",
+          author: "",
+          line: "",
+          actionPlan: ""
+        },
+        categories: defaultCategories.map((name) => createCategory(name))
+      });
+
+      const state = createDefaultState();
+
+      const refs = {
+        categoryContainer: document.getElementById("categoryContainer"),
+        fishboneSvg: document.getElementById("fishboneSvg"),
+        loadJsonInput: document.getElementById("loadJsonInput"),
+        diagramMainTitle: document.getElementById("diagramMainTitle")
+      };
+
+      const DIAGRAM_BASE_WIDTH = 1600;
+      const DIAGRAM_BASE_HEIGHT = 900;
+      let currentDiagramWidth = DIAGRAM_BASE_WIDTH;
+      let currentDiagramHeight = DIAGRAM_BASE_HEIGHT;
+      let isPrintLayout = false;
+
+      const assignMetaInputs = () => {
+        document.querySelectorAll("[data-meta]").forEach((el) => {
+          const key = el.dataset.meta;
+          el.value = state.meta[key] || "";
+        });
+      };
+
+      const renderCategories = () => {
+        refs.categoryContainer.innerHTML = state.categories
+          .map((category) => {
+            const causeRows = category.causes
+              .map((cause) => {
+                const subCauseRows = (cause.subCauses || [])
+                  .map((subCause) => `
+                    <div class="subcause-row" data-subcause-id="${category.id}::${cause.id}::${subCause.id}">
+                      <input data-action="subcause-field" value="${escapeAttr(subCause.text)}" placeholder="예: 압력 게이지 오프셋 미보정" />
+                      <button class="danger subcause-btn" data-action="remove-subcause">삭제</button>
+                    </div>
+                  `)
+                  .join("");
+
+                return `
+                  <div class="cause-row" data-cause-id="${category.id}::${cause.id}">
+                    <div class="cause-grid">
+                      <div class="field">
+                        <label>원인</label>
+                        <input data-action="cause-field" data-field="text" value="${escapeAttr(cause.text)}" placeholder="예: 윤활 부족" />
+                      </div>
+                      <div class="field">
+                        <label>근거/관찰 내용</label>
+                        <input data-action="cause-field" data-field="evidence" value="${escapeAttr(cause.evidence)}" placeholder="예: 윤활유 점도 저하" />
+                      </div>
+                    </div>
+                    <div class="subcause-block">
+                      <div class="subcause-title">세부 원인</div>
+                      <div class="subcause-list">
+                        ${subCauseRows || '<div class="subcause-empty">등록된 세부 원인이 없습니다.</div>'}
+                      </div>
+                      <div>
+                        <button class="ghost subcause-btn" data-action="add-subcause">세부 원인 추가</button>
+                      </div>
+                    </div>
+                    <div class="cause-actions">
+                      <label class="critical-toggle">
+                        <input data-action="cause-field" data-field="critical" type="checkbox" ${cause.critical ? "checked" : ""} />
+                        Critical
+                      </label>
+                      <button class="danger" data-action="remove-cause">삭제</button>
+                    </div>
+                  </div>
+                `;
+              })
+              .join("");
+
+            return `
+              <div class="category-card" data-category-id="${category.id}">
+                <div class="category-head">
+                  <input data-action="category-name" value="${escapeAttr(category.name)}" />
+                  <button class="danger" data-action="remove-category">카테고리 삭제</button>
+                </div>
+                <div class="causes">${causeRows}</div>
+                <div class="btn-row" style="margin-top: 8px;">
+                  <button class="ghost" data-action="add-cause">원인 추가</button>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      };
+
+      const renderDiagram = () => {
+        const svg = refs.fishboneSvg;
+        const printMode = isPrintLayout;
+        const categoryCount = Math.max(state.categories.length, 1);
+        const roughCauseWrapChars =
+          categoryCount >= 10 ? 10 :
+          categoryCount >= 8 ? 13 :
+          categoryCount >= 6 ? 17 :
+          23;
+        const maxCauseCount = Math.max(
+          1,
+          ...state.categories.map((category) => {
+            const validCauses = category.causes.filter((cause) => cause.text.trim());
+            if (!validCauses.length) return 1;
+            return validCauses.reduce((total, cause) => {
+              const causeLines = wrapCauseLines(cause.text || "", roughCauseWrapChars).length;
+              const subCount = (cause.subCauses || [])
+                .map((subCause) => String(typeof subCause === "string" ? subCause : (subCause?.text || "")).trim())
+                .filter(Boolean).length;
+              return total + Math.max(1, causeLines) + Math.min(2, subCount) * 0.85 + 0.4;
+            }, 0);
+          })
+        );
+        const maxCauseLineCount = Math.max(
+          1,
+          ...state.categories.flatMap((category) =>
+            category.causes.map((cause) => wrapCauseLines(cause.text || "", roughCauseWrapChars).length || 1)
+          )
+        );
+        const width = DIAGRAM_BASE_WIDTH;
+        const baseHeight = printMode ? 620 : DIAGRAM_BASE_HEIGHT;
+        const dynamicHeight = printMode
+          ? 520 + maxCauseCount * 40 + (maxCauseLineCount - 1) * 20
+          : 740 + maxCauseCount * 54 + (maxCauseLineCount - 1) * 26;
+        let height = Math.max(baseHeight, dynamicHeight);
+        const safe = 70;
+        const actionBoxX = safe;
+        const actionBoxW = width - safe * 2;
+        const actionLineHeight = printMode ? 18 : 24;
+        const actionMaxLines = printMode ? 4 : 6;
+        const actionLines = formatActionLines(
+          state.meta.actionPlan || "",
+          Math.max(24, Math.floor((actionBoxW - 170) / 13)),
+          actionMaxLines
+        );
+        const actionBoxH = (printMode ? 42 : 54) + actionLines.length * actionLineHeight;
+        let actionBoxY = height - actionBoxH - (printMode ? 24 : 20);
+        const metaBottomY = printMode ? 92 : 112;
+        const fishTopY = metaBottomY + (printMode ? 28 : 82);
+        const minFishZone = printMode ? 270 : 430;
+        if (actionBoxY - fishTopY < minFishZone) {
+          height = fishTopY + minFishZone + actionBoxH + 20;
+          actionBoxY = height - actionBoxH - 20;
+        }
+
+        const effectW = printMode ? 275 : 290;
+        const effectH = printMode ? 92 : 100;
+        const effectGap = 30;
+        const spineStartX = printMode ? 400 : 420;
+        const effectX = width - safe - effectW;
+        const spineEndX = effectX - effectGap;
+        const centerY = printMode
+          ? Math.round(fishTopY + (actionBoxY - fishTopY) * 0.48)
+          : Math.round((fishTopY + actionBoxY) / 2);
+        const angle = (35 * Math.PI) / 180;
+        const topLimit = fishTopY + (printMode ? 16 : 36);
+        const bottomLimit = actionBoxY - (printMode ? 28 : 56);
+        const maxTopLen = (centerY - topLimit) / Math.sin(angle);
+        const maxBottomLen = (bottomLimit - centerY) / Math.sin(angle);
+        const branchLenMin = printMode ? 130 : 150;
+        const branchLenMax = printMode ? 360 : 420;
+        const branchLen = Math.max(branchLenMin, Math.min(branchLenMax, maxTopLen, maxBottomLen));
+        const spineLen = spineEndX - spineStartX;
+        const spineMidX = (spineStartX + spineEndX) / 2;
+        const densityFactor = Math.min(1, categoryCount / 8);
+        const centeredSpan = Math.max(
+          520,
+          Math.min(spineLen * (0.62 + 0.24 * densityFactor), spineLen - 180)
+        );
+        const usableStart = Math.max(spineStartX + 130, spineMidX - centeredSpan / 2);
+        const usableEnd = Math.min(spineEndX - 110, spineMidX + centeredSpan / 2);
+        const leadShift = Math.min(110, Math.max(55, (usableEnd - usableStart) * 0.14));
+        const alignedStart = Math.min(usableEnd - 120, usableStart + leadShift);
+        const alignedEnd = Math.min(spineEndX - 90, usableEnd + Math.round(leadShift * 0.7));
+        const fontScale =
+          categoryCount >= 10 ? 0.76 :
+          categoryCount >= 8 ? 0.84 :
+          categoryCount >= 6 ? 0.92 :
+          1;
+        const categoryFontSize = Math.round(21 * fontScale);
+        const causeFontSize = Math.round(16 * fontScale);
+        const causeWrapChars =
+          categoryCount >= 10 ? 12 :
+          categoryCount >= 8 ? 15 :
+          categoryCount >= 6 ? 19 :
+          24;
+        const causeLineHeight = Math.round(causeFontSize * 1.2);
+        const columnCount = Math.max(1, Math.ceil(categoryCount / 2));
+        const calcDistributedX = (order, total) => {
+          if (total <= 1) return (alignedStart + alignedEnd) / 2;
+          return alignedStart + ((alignedEnd - alignedStart) * order) / (total - 1);
+        };
+        const baseXByIndex = new Map();
+        state.categories.forEach((_, idx) => {
+          const columnIndex = Math.floor(idx / 2);
+          baseXByIndex.set(idx, calcDistributedX(columnIndex, columnCount));
+        });
+
+        currentDiagramWidth = width;
+        currentDiagramHeight = height;
+        svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+        svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+
+        const title = state.meta.effect?.trim() || "고장 현상 미입력";
+        const effectLayout = calcEffectTextLayout(title, effectW - 28, effectH - 44);
+        const effectTextX = effectX + 14;
+        const effectBodyStartY = centerY + 18;
+        const effectBodyTspans = effectLayout.lines
+          .map((line, idx) => `<tspan x="${effectTextX}" y="${effectBodyStartY + idx * effectLayout.lineHeight}">${escapeHtml(line)}</tspan>`)
+          .join("");
+        refs.diagramMainTitle.textContent = state.meta.equipment?.trim()
+          ? `${state.meta.equipment} 고장원인 분석`
+          : "고장원인 분석 다이어그램";
+
+        let content = `
+          <defs>
+            <marker id="arrowHead" markerWidth="16" markerHeight="12" refX="14" refY="6" orient="auto">
+              <path d="M 0 0 L 16 6 L 0 12 z" fill="#15344a"></path>
+            </marker>
+          </defs>
+
+          <text class="meta-text" x="${safe}" y="56">설비명: ${escapeHtml(state.meta.equipment || "-")}</text>
+          <text class="meta-text" x="${safe}" y="84">고장일: ${escapeHtml(state.meta.failureDate || "-")}</text>
+          <text class="meta-text" x="${safe}" y="112">작성자: ${escapeHtml(state.meta.author || "-")} / 위치: ${escapeHtml(state.meta.line || "-")}</text>
+
+          <line class="spine" x1="${spineStartX}" y1="${centerY}" x2="${spineEndX}" y2="${centerY}" marker-end="url(#arrowHead)" />
+          <rect class="effect-box" x="${effectX}" y="${centerY - effectH / 2}" width="${effectW}" height="${effectH}" />
+          <text class="effect-text" x="${effectTextX}" y="${centerY - 10}">고장 현상 (Effect)</text>
+          <text class="effect-value" style="font-size:${effectLayout.fontSize}px;">${effectBodyTspans}</text>
+        `;
+
+        state.categories.forEach((category, idx) => {
+          const isTop = idx % 2 === 0;
+          const sign = isTop ? -1 : 1;
+          const baseX = baseXByIndex.get(idx) ?? ((usableStart + usableEnd) / 2);
+          const endX = baseX - branchLen * Math.cos(angle);
+          const endY = centerY + sign * branchLen * Math.sin(angle);
+          const labelX = Math.max(safe + 70, Math.min(endX - 10, spineEndX - 360));
+          const labelY = endY + (isTop ? -18 : 34);
+
+          content += `
+            <line class="bone" x1="${baseX}" y1="${centerY}" x2="${endX}" y2="${endY}" />
+            <text class="category-label" x="${labelX}" y="${labelY}" style="font-size:${categoryFontSize}px;">${escapeHtml(trimText(category.name, 26))}</text>
+          `;
+
+          const validCauses = category.causes.filter((cause) => cause.text.trim());
+          let prevTopBlockTop = Number.POSITIVE_INFINITY;
+          let prevBottomBlockBottom = Number.NEGATIVE_INFINITY;
+          validCauses.forEach((cause, cIdx) => {
+            const t = (cIdx + 1) / (validCauses.length + 1);
+            const px = baseX - t * branchLen * Math.cos(angle);
+            const py = centerY + sign * t * branchLen * Math.sin(angle);
+            const labelGapFromBone = 88;
+            const desiredTextEndX = px - labelGapFromBone;
+            const textEndX = Math.max(safe + 90, Math.min(desiredTextEndX, px - 54));
+            const desiredAnchorY = py + (isTop ? -8 : 20);
+            const tickX = px - 16;
+            const tickY = py + sign * 16;
+            const causeLines = wrapCauseLines(cause.text || "", causeWrapChars);
+            const causeLineCount = Math.max(causeLines.length, 1);
+            const causeClass = cause.critical ? "cause-label cause-label-critical" : "cause-label";
+            const subCauseTexts = (cause.subCauses || [])
+              .map((subCause) => String(typeof subCause === "string" ? subCause : (subCause?.text || "")).trim())
+              .filter(Boolean)
+              .slice(0, 2);
+            const subLine1 = subCauseTexts[0] ? `- ${trimText(subCauseTexts[0], Math.max(10, causeWrapChars - 3))}` : "";
+            const subLine2 = subCauseTexts[1] ? `- ${trimText(subCauseTexts[1], Math.max(10, causeWrapChars - 3))}` : "";
+            const subLines = [subLine1, subLine2].filter(Boolean);
+            const subLineHeight = 16;
+            const minBlockGap = Math.max(12, Math.round(causeLineHeight * 0.75));
+            const topSafeY = topLimit + 10;
+            const bottomSafeY = bottomLimit - 10;
+
+            let block;
+            if (isTop) {
+              const topHeightAbove =
+                (causeLineCount - 1) * causeLineHeight +
+                (subLines.length ? 8 + (subLines.length - 1) * subLineHeight : 0);
+              const minAnchor = topSafeY + topHeightAbove;
+              const maxAnchor = Number.isFinite(prevTopBlockTop)
+                ? prevTopBlockTop - minBlockGap
+                : centerY - 10;
+
+              let anchorY = desiredAnchorY;
+              if (anchorY > maxAnchor) anchorY = maxAnchor;
+              if (anchorY < minAnchor) anchorY = minAnchor;
+              if (minAnchor > maxAnchor) anchorY = maxAnchor;
+
+              const mainTopY = anchorY - (causeLineCount - 1) * causeLineHeight;
+              const subStartY = subLines.length ? mainTopY - 8 : mainTopY;
+              const blockTopY = subLines.length
+                ? subStartY - (subLines.length - 1) * subLineHeight
+                : mainTopY;
+              const blockBottomY = anchorY;
+
+              block = { anchorY, mainTopY, subStartY, blockTopY, blockBottomY };
+              prevTopBlockTop = blockTopY;
+            } else {
+              const bottomHeightBelow =
+                (causeLineCount - 1) * causeLineHeight +
+                (subLines.length ? 18 + (subLines.length - 1) * subLineHeight : 0);
+              const minAnchor = Number.isFinite(prevBottomBlockBottom)
+                ? prevBottomBlockBottom + minBlockGap
+                : centerY + 10;
+              const maxAnchor = bottomSafeY - bottomHeightBelow;
+
+              let anchorY = desiredAnchorY;
+              if (anchorY < minAnchor) anchorY = minAnchor;
+              if (anchorY > maxAnchor) anchorY = maxAnchor;
+              if (minAnchor > maxAnchor) anchorY = minAnchor;
+
+              const mainTopY = anchorY;
+              const subStartY = anchorY + (causeLineCount - 1) * causeLineHeight + 18;
+              const blockBottomY = anchorY + bottomHeightBelow;
+
+              block = { anchorY, mainTopY, subStartY, blockTopY: mainTopY, blockBottomY };
+              prevBottomBlockBottom = blockBottomY;
+            }
+
+            const causeTspans = causeLines
+              .map((line, lineIdx) => `<tspan x="${textEndX}" y="${block.mainTopY + lineIdx * causeLineHeight}">${escapeHtml(line)}</tspan>`)
+              .join("");
+            const connectorEndX = textEndX + 14;
+            const subText1 = subLines[0]
+              ? `<text class="subcause-label" x="${textEndX}" y="${block.subStartY}" text-anchor="end">${escapeHtml(subLines[0])}</text>`
+              : "";
+            const subText2 = subLines[1]
+              ? `<text class="subcause-label" x="${textEndX}" y="${block.subStartY + (isTop ? -subLineHeight : subLineHeight)}" text-anchor="end">${escapeHtml(subLines[1])}</text>`
+              : "";
+
+            content += `
+              <line class="minor-bone" x1="${px}" y1="${py}" x2="${tickX}" y2="${tickY}" />
+              <line class="connector" x1="${tickX}" y1="${tickY}" x2="${connectorEndX}" y2="${block.anchorY - 6}" />
+              <text class="${causeClass}" text-anchor="end" style="font-size:${causeFontSize}px;">${causeTspans}</text>
+              ${subText1}
+              ${subText2}
+            `;
+          });
+        });
+
+        const actionTextY = actionBoxY + 56;
+        const actionTspans = actionLines
+          .map((line, idx) => `<tspan x="${actionBoxX + 150}" y="${actionTextY + idx * actionLineHeight}">${escapeHtml(line || " ")}</tspan>`)
+          .join("");
+
+        content += `
+          <rect class="action-box" x="${actionBoxX}" y="${actionBoxY}" width="${actionBoxW}" height="${actionBoxH}" />
+          <text class="action-title" x="${actionBoxX + 18}" y="${actionBoxY + 34}">개선대책</text>
+          <text class="action-text">${actionTspans}</text>
+        `;
+
+        svg.innerHTML = content;
+      };
+
+      const persistState = () => {
+        localStorage.setItem("fishbone_reliability_state", JSON.stringify(state));
+      };
+
+      const renderOutputsOnly = () => {
+        renderDiagram();
+        persistState();
+      };
+
+      const renderAll = () => {
+        assignMetaInputs();
+        renderCategories();
+        renderOutputsOnly();
+      };
+
+      const findCategoryById = (id) => state.categories.find((c) => c.id === id);
+
+      const loadState = (newState) => {
+        if (!newState || typeof newState !== "object") return;
+        state.meta = {
+          equipment: String(newState.meta?.equipment || ""),
+          failureDate: String(newState.meta?.failureDate || ""),
+          effect: String(newState.meta?.effect || ""),
+          author: String(newState.meta?.author || ""),
+          line: String(newState.meta?.line || ""),
+          actionPlan: String(newState.meta?.actionPlan || "")
+        };
+        state.categories = Array.isArray(newState.categories)
+          ? newState.categories.map((cat) => ({
+              id: uid(),
+              name: String(cat.name || "새 카테고리"),
+              causes: Array.isArray(cat.causes) && cat.causes.length
+                ? cat.causes.map((cause) => ({
+                    id: uid(),
+                    text: String(cause.text || ""),
+                    evidence: String(cause.evidence || ""),
+                    critical: Boolean(cause.critical),
+                    subCauses: Array.isArray(cause.subCauses)
+                      ? cause.subCauses.map((subCause) => ({
+                          id: uid(),
+                          text: String(typeof subCause === "string" ? subCause : (subCause?.text || ""))
+                        }))
+                      : []
+                  }))
+                : [createCause("")]
+            }))
+          : defaultCategories.map((name) => createCategory(name));
+
+        if (!state.categories.length) {
+          state.categories = [createCategory("새 카테고리")];
+        }
+        renderAll();
+      };
+
+      const escapeHtml = (str) =>
+        String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+
+      const escapeAttr = (str) => escapeHtml(str).replace(/"/g, "&quot;");
+
+      const trimText = (str, max) => {
+        if (!str) return "";
+        const s = String(str);
+        return s.length > max ? `${s.slice(0, Math.max(max - 1, 1))}…` : s;
+      };
+
+      const wrapCauseLines = (str, maxChars) => {
+        const raw = String(str || "").replace(/\r/g, "");
+        if (!raw.trim()) return [""];
+
+        const paragraphs = raw.split("\n");
+        const lines = [];
+        for (const paragraph of paragraphs) {
+          const p = paragraph.replace(/\t/g, "    ");
+          if (!p.trim()) {
+            lines.push("");
+            continue;
+          }
+          let remain = p;
+          while (remain.length > maxChars) {
+            let breakAt = remain.lastIndexOf(" ", maxChars);
+            if (breakAt < Math.floor(maxChars * 0.45)) breakAt = maxChars;
+            lines.push(remain.slice(0, breakAt).trimEnd());
+            remain = remain.slice(breakAt).trimStart();
+          }
+          lines.push(remain);
+        }
+        return lines.length ? lines : [""];
+      };
+
+      const wrapEffectLines = (str, maxChars) => {
+        const raw = String(str || "").replace(/\r/g, "");
+        if (!raw.trim()) return ["고장 현상 미입력"];
+
+        const paragraphs = raw.split("\n");
+        const lines = [];
+        for (const paragraph of paragraphs) {
+          const p = paragraph.replace(/\t/g, "    ");
+          if (!p.trim()) {
+            lines.push("");
+            continue;
+          }
+          let remain = p;
+          while (remain.length > maxChars) {
+            let breakAt = remain.lastIndexOf(" ", maxChars);
+            if (breakAt < Math.floor(maxChars * 0.45)) breakAt = maxChars;
+            lines.push(remain.slice(0, breakAt).trimEnd());
+            remain = remain.slice(breakAt).trimStart();
+          }
+          lines.push(remain);
+        }
+        return lines.length ? lines : ["고장 현상 미입력"];
+      };
+
+      const calcEffectTextLayout = (text, boxWidth, boxHeight) => {
+        const content = String(text || "").trim() || "고장 현상 미입력";
+        const measureAt = (fontSize) => {
+          const avgChar = Math.max(5, fontSize * 0.88);
+          const maxChars = Math.max(4, Math.floor(boxWidth / avgChar));
+          const lines = wrapEffectLines(content, maxChars);
+          const lineHeight = Math.max(9, Math.round(fontSize * 1.22));
+          return {
+            fontSize,
+            lines,
+            lineHeight,
+            neededHeight: lines.length * lineHeight
+          };
+        };
+
+        for (let size = 24; size >= 8; size -= 1) {
+          const measured = measureAt(size);
+          if (measured.neededHeight <= boxHeight) return measured;
+        }
+
+        let measured = measureAt(8);
+        if (measured.neededHeight > boxHeight) {
+          const scaled = Math.max(6, Number((8 * (boxHeight / measured.neededHeight)).toFixed(1)));
+          measured = measureAt(scaled);
+        }
+        return measured;
+      };
+
+      const formatActionLines = (str, maxChars, maxLines = 6) => {
+        const raw = String(str || "");
+        if (!raw.trim()) return ["미입력"];
+
+        const paragraphs = raw.replace(/\r/g, "").split("\n");
+        const lines = [];
+        let truncated = false;
+
+        for (const paragraph of paragraphs) {
+          if (lines.length >= maxLines) {
+            truncated = true;
+            break;
+          }
+
+          const p = paragraph.replace(/\t/g, "    ");
+          if (!p.trim()) {
+            lines.push("");
+            continue;
+          }
+
+          let remain = p;
+          while (remain.length > maxChars) {
+            if (lines.length >= maxLines) {
+              truncated = true;
+              break;
+            }
+            let breakAt = remain.lastIndexOf(" ", maxChars);
+            if (breakAt < Math.floor(maxChars * 0.45)) breakAt = maxChars;
+            lines.push(remain.slice(0, breakAt).trimEnd());
+            remain = remain.slice(breakAt).trimStart();
+          }
+
+          if (truncated) break;
+          if (lines.length < maxLines) lines.push(remain);
+        }
+
+        if (!lines.length) lines.push("미입력");
+        if (truncated || lines.length > maxLines) {
+          lines.length = maxLines;
+          const last = lines[maxLines - 1] || "";
+          lines[maxLines - 1] = `${last.slice(0, Math.max(maxChars - 1, 1))}…`;
+        }
+        return lines;
+      };
+
+      const bindEvents = () => {
+        window.addEventListener("beforeprint", () => {
+          isPrintLayout = true;
+          renderOutputsOnly();
+        });
+
+        window.addEventListener("afterprint", () => {
+          isPrintLayout = false;
+          renderOutputsOnly();
+        });
+
+        document.addEventListener("input", (event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLElement)) return;
+
+          if (target.dataset.meta) {
+            state.meta[target.dataset.meta] = target.value;
+            renderOutputsOnly();
+            return;
+          }
+
+          if (target.dataset.action === "category-name") {
+            const categoryEl = target.closest("[data-category-id]");
+            if (!categoryEl) return;
+            const category = findCategoryById(categoryEl.dataset.categoryId);
+            if (!category) return;
+            category.name = target.value;
+            renderOutputsOnly();
+            return;
+          }
+
+          if (target.dataset.action === "cause-field") {
+            const causeEl = target.closest("[data-cause-id]");
+            if (!causeEl) return;
+            const [categoryId, causeId] = causeEl.dataset.causeId.split("::");
+            const category = findCategoryById(categoryId);
+            if (!category) return;
+            const cause = category.causes.find((c) => c.id === causeId);
+            if (!cause) return;
+
+            const field = target.dataset.field;
+            cause[field] = target instanceof HTMLInputElement && target.type === "checkbox"
+              ? target.checked
+              : target.value;
+            renderOutputsOnly();
+            return;
+          }
+
+          if (target.dataset.action === "subcause-field") {
+            const subCauseEl = target.closest("[data-subcause-id]");
+            if (!subCauseEl) return;
+            const [categoryId, causeId, subCauseId] = subCauseEl.dataset.subcauseId.split("::");
+            const category = findCategoryById(categoryId);
+            if (!category) return;
+            const cause = category.causes.find((c) => c.id === causeId);
+            if (!cause) return;
+            const subCause = (cause.subCauses || []).find((s) => s.id === subCauseId);
+            if (!subCause) return;
+            subCause.text = target.value;
+            renderOutputsOnly();
+          }
+        });
+
+        document.addEventListener("click", (event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLElement)) return;
+
+          if (target.id === "addCategoryBtn") {
+            state.categories.push(createCategory());
+            renderAll();
+            return;
+          }
+
+          if (target.id === "saveJsonBtn") {
+            const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            triggerDownload(url, `fishbone_${Date.now()}.json`);
+            URL.revokeObjectURL(url);
+            return;
+          }
+
+          if (target.id === "loadJsonBtn") {
+            refs.loadJsonInput.click();
+            return;
+          }
+
+          if (target.id === "exportPngBtn") {
+            exportSvgToPng();
+            return;
+          }
+
+          if (target.id === "printBtn") {
+            isPrintLayout = true;
+            renderOutputsOnly();
+            window.print();
+            setTimeout(() => {
+              isPrintLayout = false;
+              renderOutputsOnly();
+            }, 200);
+            return;
+          }
+
+          if (target.id === "resetBtn") {
+            if (!window.confirm("입력된 데이터를 모두 초기화할까요?")) return;
+            const fresh = createDefaultState();
+            state.meta = fresh.meta;
+            state.categories = fresh.categories;
+            renderAll();
+            return;
+          }
+
+          if (target.dataset.action === "add-cause") {
+            const categoryEl = target.closest("[data-category-id]");
+            if (!categoryEl) return;
+            const category = findCategoryById(categoryEl.dataset.categoryId);
+            if (!category) return;
+            category.causes.push(createCause(""));
+            renderAll();
+            return;
+          }
+
+          if (target.dataset.action === "add-subcause") {
+            const causeEl = target.closest("[data-cause-id]");
+            if (!causeEl) return;
+            const [categoryId, causeId] = causeEl.dataset.causeId.split("::");
+            const category = findCategoryById(categoryId);
+            if (!category) return;
+            const cause = category.causes.find((c) => c.id === causeId);
+            if (!cause) return;
+            if (!Array.isArray(cause.subCauses)) cause.subCauses = [];
+            cause.subCauses.push(createSubCause(""));
+            renderAll();
+            return;
+          }
+
+          if (target.dataset.action === "remove-category") {
+            const categoryEl = target.closest("[data-category-id]");
+            if (!categoryEl) return;
+            if (state.categories.length === 1) {
+              alert("최소 1개 카테고리는 필요합니다.");
+              return;
+            }
+            state.categories = state.categories.filter((c) => c.id !== categoryEl.dataset.categoryId);
+            renderAll();
+            return;
+          }
+
+          if (target.dataset.action === "remove-cause") {
+            const causeEl = target.closest("[data-cause-id]");
+            if (!causeEl) return;
+            const [categoryId, causeId] = causeEl.dataset.causeId.split("::");
+            const category = findCategoryById(categoryId);
+            if (!category) return;
+            if (category.causes.length === 1) {
+              alert("최소 1개 원인 항목은 유지됩니다.");
+              return;
+            }
+            category.causes = category.causes.filter((c) => c.id !== causeId);
+            renderAll();
+            return;
+          }
+
+          if (target.dataset.action === "remove-subcause") {
+            const subCauseEl = target.closest("[data-subcause-id]");
+            if (!subCauseEl) return;
+            const [categoryId, causeId, subCauseId] = subCauseEl.dataset.subcauseId.split("::");
+            const category = findCategoryById(categoryId);
+            if (!category) return;
+            const cause = category.causes.find((c) => c.id === causeId);
+            if (!cause) return;
+            cause.subCauses = (cause.subCauses || []).filter((s) => s.id !== subCauseId);
+            renderAll();
+          }
+        });
+
+        refs.loadJsonInput.addEventListener("change", async (event) => {
+          const file = event.target.files?.[0];
+          if (!file) return;
+          try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+            loadState(data);
+          } catch (error) {
+            alert("JSON 파일을 읽는 중 오류가 발생했습니다.");
+          } finally {
+            refs.loadJsonInput.value = "";
+          }
+        });
+      };
+
+      const triggerDownload = (url, filename) => {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      };
+
+      const exportSvgToPng = async () => {
+        try {
+          const svg = refs.fishboneSvg;
+          const serializer = new XMLSerializer();
+          const svgText = serializer.serializeToString(svg);
+          const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+          const url = URL.createObjectURL(svgBlob);
+
+          const img = await loadImage(url);
+          const canvas = document.createElement("canvas");
+          canvas.width = currentDiagramWidth;
+          canvas.height = currentDiagramHeight;
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          URL.revokeObjectURL(url);
+
+          const pngUrl = canvas.toDataURL("image/png");
+          triggerDownload(pngUrl, `fishbone_${Date.now()}.png`);
+        } catch (error) {
+          alert("PNG 변환에 실패했습니다.");
+        }
+      };
+
+      const loadImage = (url) =>
+        new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = url;
+        });
+
+      const boot = () => {
+        const saved = localStorage.getItem("fishbone_reliability_state");
+        if (saved) {
+          try {
+            loadState(JSON.parse(saved));
+          } catch (error) {
+            renderAll();
+          }
+        } else {
+          renderAll();
+        }
+        bindEvents();
+      };
+
+      boot();
+    })();
+  </script>
+</body>
+</html>
